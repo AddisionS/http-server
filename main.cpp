@@ -2,6 +2,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "http.hpp"
+
+using namespace std;
 
 int main() {
     //creating file descriptor for socket connection
@@ -57,8 +60,14 @@ int main() {
             std::cout << "-------------------------------\n";
         }
 
-        //echo everthing back 
-        send(client_fd, buffer, bytes_read, 0);
+        //parse http request 
+        string raw_request(buffer, bytes_read);
+
+        Request request = parseRequest(raw_request);
+
+        cout << "Method: " << request.method << '\n';
+        cout << "Path: " << request.path << '\n';
+        cout << "Version: " << request.version << '\n';
 
         //close client connection 
         close(client_fd);
