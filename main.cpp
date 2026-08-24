@@ -69,6 +69,15 @@ int main() {
         cout << "Path: " << request.path << '\n';
         cout << "Version: " << request.version << '\n';
 
+        //mock response generation
+        Response response = createResponse();
+
+        //response serialization
+        std::string raw_response = serializeResponse(response);
+
+        //sending response back to client
+        send(client_fd, raw_response.c_str(), raw_response.size(), 0);  
+
         //close client connection 
         close(client_fd);
     }

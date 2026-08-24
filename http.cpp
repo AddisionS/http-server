@@ -60,3 +60,44 @@ Request parseRequest(const std::string& raw) {
 
     return request; 
 }
+
+//response sending method implementation
+std::string serializeResponse(const Response& response){
+    std::string response_line;
+
+    response_line += response.version;
+    response_line += " ";
+    response_line += std::to_string(response.status_code);
+    response_line += " ";
+    response_line += response.reason;
+    response_line += "\r\n";
+
+    for (const auto& [key, value] : response.headers) {
+        response_line += key;
+        response_line += ": ";
+        response_line += value;
+        response_line += "\r\n";
+    }
+    response_line += "\r\n";
+
+    response_line += response.body;
+
+    return response_line;
+}
+
+
+//mock response maker method implementation
+Response createResponse() {
+    Response response;
+
+    response.version = "HTTP/1.1";
+    response.status_code = 200;
+    response.reason = "OK";
+    response.body = "Hello";
+
+    response.headers["Content-Type"] = "text/plain";
+    response.headers["Content-Length"] =
+        std::to_string(response.body.size());
+
+    return response;
+}
