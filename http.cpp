@@ -1,4 +1,5 @@
 #include "http.hpp"
+#include <stdexcept>
 
 //parse request method implementation 
 Request parseRequest(const std::string& raw) {
@@ -6,7 +7,16 @@ Request parseRequest(const std::string& raw) {
 
     //request line parsing 
     size_t first_space = raw.find(" ");
+
+    if (first_space == std::string::npos) {
+        throw std::runtime_error("Malformed request line");
+    }
+
     size_t second_space = raw.find(' ', first_space + 1);
+
+    if (second_space == std::string::npos) {
+        throw std::runtime_error("Malformed request line");
+    }
 
     request.method = raw.substr(0, first_space);
 

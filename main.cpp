@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "http.hpp"
+#include <stdexcept>
 
 using namespace std;
 
@@ -52,31 +53,49 @@ int main() {
         std::cout << "New connection from " << ip_str << "\n";
 
         //read what the client sends
-        char buffer[4096] = {0};
-        ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-        if (bytes_read > 0) {
-            std::cout << "--- Received " << bytes_read << " bytes ---\n";
-            std::cout << buffer << "\n";
-            std::cout << "-------------------------------\n";
+        string raw_request;
+        while (raw_request.find("\r\n\r\n") == std::string::npos) {
+            char buffer[4096];
+
+            ssize_t bytes_read = recv(
+                client_fd,
+                buffer,
+                sizeof(buffer),
+                0
+            );
+
+            if (bytes_read > 0) {
+                raw_request.append(buffer, bytes_read);
+            }
+            else if (bytes_read == 0) {
+                // Client closed the connection
+                break;
+            }
+            else {
+                perror("recv failed");
+                break;
+            }
         }
 
-        //parse http request 
-        string raw_request(buffer, bytes_read);
+        try {
+            //parse http request 
+            Request request = parseRequest(raw_request);
 
-        Request request = parseRequest(raw_request);
+            cout << "Method: " << request.method << '\n';
+            cout << "Path: " << request.path << '\n';
+            cout << "Version: " << request.version << '\n';
 
-        cout << "Method: " << request.method << '\n';
-        cout << "Path: " << request.path << '\n';
-        cout << "Version: " << request.version << '\n';
+            //mock response generation
+            Response response = createResponse();
 
-        //mock response generation
-        Response response = createResponse();
+            //response serialization
+            std::string raw_response = serializeResponse(response);
 
-        //response serialization
-        std::string raw_response = serializeResponse(response);
-
-        //sending response back to client
-        send(client_fd, raw_response.c_str(), raw_response.size(), 0);  
+            //sending response back to client
+            send(client_fd, raw_response.c_str(), raw_response.size(), 0);  
+        } catch(const std::runtime_error& e) {
+            cerr << "Bad request: " << e.what() << '\n';
+        }
 
         //close client connection 
         close(client_fd);
