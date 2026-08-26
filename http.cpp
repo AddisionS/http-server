@@ -123,21 +123,6 @@ std::string serializeResponse(const Response& response){
 }
 
 
-//mock response maker method implementation
-Response createResponse() {
-    Response response;
-
-    response.version = "HTTP/1.1";
-    response.status_code = StatusCode::OK;
-    response.body = "Hello";
-
-    response.headers["Content-Type"] = "text/plain";
-    response.headers["Content-Length"] = std::to_string(response.body.size());
-
-    return response;
-}
-
-
 //method to add routes
 void Router::addRoute(const std::string& method, const std::string& path, Handler handler) {
     routes[{method, path}] = handler;

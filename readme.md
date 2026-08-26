@@ -1,270 +1,247 @@
-# HTTP Server
+# HTTP Server in C++
 
-A small HTTP server built from scratch in C++ to understand how networking and HTTP work beneath the abstractions.
+A lightweight HTTP/1.1 server built from scratch in C++ using Linux sockets and `epoll`.
 
-This project is being developed incrementally rather than following a step-by-step tutorial. The goal is to understand **why** each part exists, not just make it work.
+The goal of this project was to understand how an HTTP server works underneath frameworks and web servers.
 
----
+## Features
 
-## Current Progress
+- TCP socket-based HTTP server
+- HTTP/1.1 request parsing
+- HTTP response serialization
+- Non-blocking sockets
+- `epoll` event loop
+- Multiple simultaneous clients
+- Per-client request buffering
+- Partial TCP reads
+- Multiple requests on the same connection
+- HTTP keep-alive
+- `Connection: close`
+- Partial response writes
+- `EPOLLOUT` handling
+- Basic routing
+- `GET`, `POST`, `PUT`, `DELETE`
+- `400 Bad Request`
+- `404 Not Found`
+- `405 Method Not Allowed`
+- `500 Internal Server Error`
+- Basic static file serving through route handlers
+- Tested through `curl`, `nc`, and a browser
+- Can be exposed temporarily through a Cloudflare Quick Tunnel
 
-### Phase 1 — TCP + HTTP Request Parsing ✅
-
-The server currently:
-
-- Creates an IPv4 TCP socket
-- Configures `SO_REUSEADDR`
-- Binds to `0.0.0.0:8080`
-- Listens for incoming TCP connections
-- Accepts client connections
-- Identifies the client's IP address
-- Receives raw TCP bytes
-- Parses the HTTP request line
-  - Method
-  - Path
-  - HTTP version
-- Parses HTTP headers into a key-value map
-- Closes the client connection
-
-### Current Flow
+## Architecture
 
 ```text
-Client
-  ↓
-TCP connection
-  ↓
-socket()
-  ↓
-bind()
-  ↓
-listen()
-  ↓
-accept()
-  ↓
-recv()
-  ↓
-HTTP Parser
-  ├── Request Line
-  │    ├── Method
-  │    ├── Path
-  │    └── Version
-  │
-  └── Headers
-       ├── Key
-       └── Value
+                    Browser / Client
+                           │
+                           ▼
+                    TCP connection
+                           │
+                           ▼
+                    Non-blocking socket
+                           │
+                           ▼
+                         epoll
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+           EPOLLIN                   EPOLLOUT
+              │                         │
+              ▼                         ▼
+        Receive request          Send response
+              │
+              ▼
+        Request buffer
+              │
+              ▼
+        HTTP parser
+              │
+              ▼
+           Router
+              │
+              ▼
+          Handler
+              │
+              ▼
+          Response
+              │
+              ▼
+      HTTP serialization
+              │
+              ▼
+       Response buffer
+              │
+              ▼
+            TCP
 ```
-
----
 
 ## Project Structure
 
 ```text
 http-server/
 ├── main.cpp
+├── server.cpp
+├── server.hpp
+├── http.cpp
 ├── http.hpp
-└── http.cpp
+└── public/
+    ├── index.html
+    └── style.css
 ```
 
 ### `main.cpp`
 
-Responsible for the networking layer:
+Public-facing application code.
 
-- Creating the socket
-- Binding
-- Listening
-- Accepting connections
-- Receiving data
-- Managing client connections
+```cpp
+Server server(8080);
 
-### `http.hpp`
+server.get("/hello", handler);
+server.post("/users", handler);
+server.put("/users", handler);
+server.del("/users", handler);
 
-Contains the HTTP data structures and parser interface.
-
-### `http.cpp`
-
-Contains the HTTP parsing implementation.
-
----
-
-## Roadmap
-
-### Phase 1 — TCP + HTTP Request Parsing ✅
-
-- [x] Create IPv4 TCP socket
-- [x] Configure `SO_REUSEADDR`
-- [x] Bind socket
-- [x] Listen for connections
-- [x] Accept client connections
-- [x] Receive TCP data
-- [x] Parse HTTP request line
-- [x] Parse HTTP headers
-
-### Phase 2 — HTTP Responses
-
-- [ ] Build HTTP response structure
-- [ ] Generate status line
-- [ ] Generate response headers
-- [ ] Generate response body
-- [ ] Return a valid `200 OK` response
-- [ ] Test with `curl`
-
-### Phase 3 — Routing
-
-- [ ] Implement basic routing
-- [ ] Support different HTTP methods
-- [ ] Handle `404 Not Found`
-- [ ] Handle `405 Method Not Allowed`
-
-### Phase 4 — Request Bodies
-
-- [ ] Parse `Content-Length`
-- [ ] Receive partial HTTP requests
-- [ ] Handle request bodies
-- [ ] Support basic `POST` requests
-
-### Phase 5 — Static Files
-
-- [ ] Serve files from disk
-- [ ] Determine basic MIME types
-- [ ] Handle missing files
-
-### Phase 6 — Concurrency
-
-- [ ] Understand blocking vs non-blocking sockets
-- [ ] Support multiple clients
-- [ ] Explore threads
-- [ ] Explore event-driven I/O
-- [ ] Explore `select()`
-- [ ] Explore `poll()`
-- [ ] Explore `epoll()`
-
-### Phase 7 — HTTP/1.1
-
-- [ ] Persistent connections
-- [ ] Proper request boundaries
-- [ ] Connection management
-- [ ] More complete HTTP/1.1 support
-
----
-
-## Architecture
-
-The project is being built in layers rather than treating HTTP as a black box.
-
-```text
-┌──────────────────────┐
-│      HTTP Layer      │
-│                      │
-│ Request Parsing      │
-│ Routing              │
-│ Response Generation  │
-└──────────┬───────────┘
-           │
-┌──────────▼───────────┐
-│      TCP Layer       │
-│                      │
-│ socket()             │
-│ bind()               │
-│ listen()             │
-│ accept()             │
-│ recv()               │
-│ send()               │
-└──────────┬───────────┘
-           │
-┌──────────▼───────────┐
-│        Kernel        │
-│                      │
-│ TCP/IP Stack         │
-│ Socket Management    │
-│ Network Interfaces   │
-└──────────────────────┘
+server.run();
 ```
 
-The objective is to understand what actually happens between:
+### `server.cpp / server.hpp`
 
-```text
-Browser
-   ↓
-HTTP
-   ↓
-TCP
-   ↓
-Kernel
-   ↓
-Socket
-   ↓
-Our Server
-   ↓
-HTTP Response
+Contains the networking layer:
+
+- socket creation
+- `bind`
+- `listen`
+- `accept`
+- non-blocking sockets
+- `epoll`
+- client state
+- request/response buffers
+- keep-alive
+- partial reads/writes
+- `EPOLLIN`
+- `EPOLLOUT`
+
+### `http.cpp / http.hpp`
+
+Contains:
+
+- `Request`
+- `Response`
+- HTTP request parsing
+- HTTP response serialization
+- status codes
+- router implementation
+
+## API
+
+Create a server:
+
+```cpp
+Server server(8080);
 ```
 
----
+### GET
 
-## HTTP Request Parsing
-
-A basic HTTP request looks like:
-
-```text
-GET /hello HTTP/1.1
-Host: localhost:8080
-Connection: close
-User-Agent: curl
-
+```cpp
+server.get(
+    "/hello",
+    [](const Request&, Response& res) {
+        res.status_code = StatusCode::OK;
+        res.body = "Hello from API!";
+        res.headers["Content-Type"] = "text/plain";
+    }
+);
 ```
 
-The request is divided into:
+### POST
 
-```text
-Request Line
-     ↓
-Headers
-     ↓
-Blank Line
-     ↓
-Optional Body
+```cpp
+server.post(
+    "/users",
+    [](const Request& req, Response& res) {
+        res.status_code = StatusCode::OK;
+        res.body = "Received: " + req.body;
+        res.headers["Content-Type"] = "text/plain";
+    }
+);
 ```
 
-The request line:
+### PUT
 
-```text
-GET /hello HTTP/1.1
+```cpp
+server.put("/users", handler);
 ```
 
-is parsed into:
+### DELETE
 
-```text
-Method  → GET
-Path    → /hello
-Version → HTTP/1.1
+```cpp
+server.del("/users", handler);
 ```
 
-Headers are stored as key-value pairs:
+`del()` is used because `delete` is a C++ keyword.
+
+## Status Codes
+
+| Code | Meaning |
+|---|---|
+| `200` | OK |
+| `400` | Bad Request |
+| `404` | Not Found |
+| `405` | Method Not Allowed |
+| `500` | Internal Server Error |
 
 ```text
-Host: localhost:8080
-Connection: close
+Bad HTTP request       → 400
+Route doesn't exist    → 404
+Wrong HTTP method      → 405
+Handler throws         → 500
 ```
 
-becomes conceptually:
+## Static Files
 
-```text
-headers["Host"]       → "localhost:8080"
-headers["Connection"] → "close"
+Static files can currently be served using normal `GET` handlers.
+
+```cpp
+server.get(
+    "/",
+    [](const Request&, Response& res) {
+        res.status_code = StatusCode::OK;
+        res.body = readFile("./public/index.html");
+        res.headers["Content-Type"] = "text/html";
+    }
+);
 ```
 
----
+And CSS:
+
+```cpp
+server.get(
+    "/style.css",
+    [](const Request&, Response& res) {
+        res.status_code = StatusCode::OK;
+        res.body = readFile("./public/style.css");
+        res.headers["Content-Type"] = "text/css";
+    }
+);
+```
+
+A browser requesting `/` sees:
+
+```html
+<link rel="stylesheet" href="/style.css">
+```
+
+and automatically makes another HTTP request for `/style.css`.
 
 ## Building
 
-This project currently targets Linux/POSIX networking APIs.
-
-### Compile
+From WSL/Linux:
 
 ```bash
-g++ -Wall -Wextra -pedantic main.cpp http.cpp -o server
+g++ -Wall -Wextra -pedantic main.cpp server.cpp http.cpp -o server
 ```
 
-### Run
+Run:
 
 ```bash
 ./server
@@ -273,125 +250,130 @@ g++ -Wall -Wextra -pedantic main.cpp http.cpp -o server
 The server listens on:
 
 ```text
-0.0.0.0:8080
+http://localhost:8080
 ```
-
----
 
 ## Testing
 
-### Test TCP Connectivity
-
-Using netcat:
+### GET
 
 ```bash
-printf "hello" | nc localhost 8080
+printf 'GET /hello HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' | nc localhost 8080
 ```
 
-This was used during the initial TCP implementation to verify that bytes could travel:
+### POST
+
+```bash
+printf 'POST /users HTTP/1.1\r\nHost: localhost\r\nContent-Length: 11\r\nConnection: close\r\n\r\nHello World' | nc localhost 8080
+```
+
+### 404
+
+```bash
+printf 'GET /doesnotexist HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' | nc localhost 8080
+```
+
+### 405
+
+```bash
+printf 'POST /hello HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\nConnection: close\r\n\r\n' | nc localhost 8080
+```
+
+### 500
+
+```bash
+printf 'GET /error HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' | nc localhost 8080
+```
+
+## Keep-Alive
+
+HTTP/1.1 connections are kept alive by default.
+
+Multiple requests can be sent over the same TCP connection:
+
+```bash
+printf 'GET /hello HTTP/1.1\r\nHost: localhost\r\n\r\nGET /users HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' | nc localhost 8080
+```
+
+## Concurrency
+
+The server uses Linux `epoll` instead of creating a thread for every connection.
 
 ```text
-Client
-  ↓
+              epoll_wait()
+                   │
+        ┌──────────┼──────────┐
+        ▼          ▼          ▼
+      Client 1   Client 2   Client 3
+        │          │          │
+      ready      ready      ready
+```
+
+This allows a single event loop to handle multiple clients without blocking on one connection.
+
+## Public Testing
+
+For temporary external testing, Cloudflare Quick Tunnel can expose the local server:
+
+```bash
+cloudflared tunnel --url http://localhost:8080
+```
+
+This provides a temporary `trycloudflare.com` URL that forwards requests to the local server.
+
+## Current Limitations
+
+This is a learning-focused HTTP server, not a production web server.
+
+Not currently implemented:
+
+- Dynamic route parameters
+- Middleware
+- JSON helpers
+- Automatic static-file serving
+- MIME-type lookup for arbitrary files
+- Chunked transfer encoding
+- HTTPS/TLS
+- HTTP/2
+- HTTP/3
+- Authentication
+- Rate limiting
+- Request size limits
+- Timeouts
+- Production-grade error handling
+- Graceful shutdown
+- Advanced connection management
+
+## What This Project Taught
+
+The stack was built from the bottom up:
+
+```text
 TCP
-  ↓
-Server
-  ↓
-recv()
-  ↓
-send()
-  ↓
-Client
+ ↓
+Sockets
+ ↓
+Non-blocking I/O
+ ↓
+epoll
+ ↓
+Connection management
+ ↓
+HTTP parsing
+ ↓
+HTTP serialization
+ ↓
+Routing
+ ↓
+Application handlers
+ ↓
+Public C++ API
 ```
 
-### Test HTTP Request Parsing
+The important part isn't the final number of features.
 
-Send a raw HTTP request:
+It's that the abstraction was built after understanding the machinery underneath it.
 
-```bash
-printf 'GET /hello HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\nUser-Agent: nc\r\n\r\n' | nc localhost 8080
-```
+No framework doing the magic.
 
-The server should parse and display:
-
-```text
-Method: GET
-Path: /hello
-Version: HTTP/1.1
-```
-
-along with the parsed headers.
-
----
-
-## Development Philosophy
-
-This project is intentionally being built without a step-by-step tutorial.
-
-When something is unknown:
-
-```text
-Don't know
-   ↓
-Investigate
-   ↓
-Read documentation
-   ↓
-Experiment
-   ↓
-Understand
-   ↓
-Implement
-```
-
-The goal is not to blindly reproduce an existing HTTP server.
-
-The goal is to understand the systems underneath it and gradually build the abstractions ourselves.
-
----
-
-## Learning Goals
-
-By the end of the project, I want to understand:
-
-- How sockets work
-- How the OS manages file descriptors
-- How TCP connections are established and managed
-- How `bind()`, `listen()` and `accept()` interact
-- How data moves between the kernel and user space
-- Why TCP is a byte stream
-- Why `recv()` does not necessarily return a complete request
-- How HTTP is layered on top of TCP
-- How HTTP requests are parsed
-- How HTTP responses are constructed
-- How routing works
-- How concurrent servers handle multiple clients
-- How blocking and non-blocking I/O differ
-- How event-driven networking works
-- What abstractions frameworks normally hide
-
----
-
-## Status
-
-🚧 **Phase 1 Complete**
-
-The TCP layer and basic HTTP request parsing are working.
-
-The server can currently accept a TCP connection, receive an HTTP request, parse its request line and headers, and represent the result as a structured `Request`.
-
-### Next Milestone
-
-**Generate the first real HTTP response.**
-
-```text
-HTTP Request
-     ↓
-Parse
-     ↓
-Request
-     ↓
-Generate Response
-     ↓
-HTTP Response
-```
+Just sockets, bytes, state machines, and a frankly unreasonable amount of debugging.

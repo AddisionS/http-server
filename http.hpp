@@ -43,9 +43,6 @@ struct Response{
 //method for sending response
 std::string serializeResponse(const Response& response);
 
-//mock response method
-Response createResponse();
-
 using Handler = std::function<void(const Request&, Response&)>;
 //routing class
 class Router {

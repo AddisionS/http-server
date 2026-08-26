@@ -12,8 +12,8 @@
 
 using namespace std;
 
-Server::Server(int port, Router& router)
-    : port(port), router(router) {}
+Server::Server(int port)
+    : port(port) {}
 
 void Server::closeClient(int fd, int epoll_fd) {
 
@@ -27,6 +27,35 @@ void Server::closeClient(int fd, int epoll_fd) {
     clients.erase(fd);
 
     close(fd);
+}
+
+void Server::get(const std::string& path, Handler handler) {
+    router.addRoute(
+        "GET",
+        path,
+        handler
+    );
+}
+
+void Server::post(
+    const std::string& path,
+    Handler handler
+) {
+    router.addRoute("POST", path, handler);
+}
+
+void Server::put(
+    const std::string& path,
+    Handler handler
+) {
+    router.addRoute("PUT", path, handler);
+}
+
+void Server::del(
+    const std::string& path,
+    Handler handler
+) {
+    router.addRoute("DELETE", path, handler);
 }
 
 void Server::run() {
@@ -373,10 +402,23 @@ void Server::run() {
 
                             if (handler) {
 
-                                (*handler)(
-                                    request,
-                                    response
-                                );
+                                try {
+                                    (*handler)(request,response);
+                                }
+                                catch(const std::exception& e) {
+                                    cerr << "Handler error: "
+                                        << e.what()
+                                        << '\n';
+
+                                    response.status_code =
+                                        StatusCode::InternalServerError;
+
+                                    response.body =
+                                        "Internal Server Error";
+
+                                    response.headers["Content-Type"] =
+                                        "text/plain";
+                                }
 
                             } else if (
                                 router.pathExists(
