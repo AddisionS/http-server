@@ -71,15 +71,42 @@ Request parseRequest(const std::string& raw) {
     return request; 
 }
 
+//method to return status code in int
+int statusCodeToInt(StatusCode status) {
+    return static_cast<int>(status);
+}
+
+//status code to reason
+std::string statusText(StatusCode status) {
+    switch (status) {
+        case StatusCode::OK:
+            return "OK";
+
+        case StatusCode::BadRequest:
+            return "Bad Request";
+
+        case StatusCode::NotFound:
+            return "Not Found";
+
+        case StatusCode::MethodNotAllowed:
+            return "Method Not Allowed";
+
+        case StatusCode::InternalServerError:
+            return "Internal Server Error";
+    }
+
+    return "Unknown";
+}
+
 //response sending method implementation
 std::string serializeResponse(const Response& response){
     std::string response_line;
 
     response_line += response.version;
     response_line += " ";
-    response_line += std::to_string(response.status_code);
+    response_line += std::to_string(statusCodeToInt(response.status_code));
     response_line += " ";
-    response_line += response.reason;
+    response_line += statusText(response.status_code);
     response_line += "\r\n";
 
     for (const auto& [key, value] : response.headers) {
@@ -101,13 +128,39 @@ Response createResponse() {
     Response response;
 
     response.version = "HTTP/1.1";
-    response.status_code = 200;
-    response.reason = "OK";
+    response.status_code = StatusCode::OK;
     response.body = "Hello";
 
     response.headers["Content-Type"] = "text/plain";
-    response.headers["Content-Length"] =
-        std::to_string(response.body.size());
+    response.headers["Content-Length"] = std::to_string(response.body.size());
 
     return response;
+}
+
+
+//method to add routes
+void Router::addRoute(const std::string& method, const std::string& path, Handler handler) {
+    routes[{method, path}] = handler;
+}
+
+//method to find route
+Handler* Router::findRoute(const std::string& method, const std::string& path) {
+    auto it = routes.find({method, path});
+
+    if (it != routes.end()) {
+        return &it->second;
+    }
+
+    return nullptr;
+}
+
+//method to check path's existence 
+bool Router::pathExists(const std::string& path) {
+    for (const auto& route : routes) {
+        if (route.first.second == path) {
+            return true;
+        }
+    }
+
+    return false;
 }
