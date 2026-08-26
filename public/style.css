@@ -1,7 +1,183 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
-    font-family: sans-serif;
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: #0b0d10;
+    color: #f1f3f5;
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+.container {
+    width: min(900px, 90%);
+    padding: 60px 0;
+}
+
+.badge {
+    display: inline-block;
+
+    padding: 8px 14px;
+    margin-bottom: 28px;
+
+    border: 1px solid #30343b;
+    border-radius: 999px;
+
+    color: #8b949e;
+
+    font-family: monospace;
+    font-size: 12px;
+    letter-spacing: 1.5px;
 }
 
 h1 {
-    font-size: 40px;
+    font-size: clamp(48px, 8vw, 88px);
+    line-height: 0.95;
+    letter-spacing: -4px;
+
+    margin-bottom: 30px;
+}
+
+h1 span {
+    color: #6ee7b7;
+}
+
+.description {
+    max-width: 650px;
+
+    color: #9da5b0;
+
+    font-size: 19px;
+    line-height: 1.7;
+
+    margin-bottom: 45px;
+}
+
+.stats {
+    display: flex;
+    gap: 16px;
+
+    margin-bottom: 40px;
+}
+
+.stat {
+    min-width: 150px;
+
+    padding: 18px 20px;
+
+    background: #11151a;
+    border: 1px solid #242a31;
+    border-radius: 12px;
+}
+
+.stat strong {
+    display: block;
+
+    color: #ffffff;
+
+    font-family: monospace;
+    font-size: 17px;
+
+    margin-bottom: 6px;
+}
+
+.stat span {
+    color: #6f7781;
+    font-size: 13px;
+}
+
+.terminal {
+    overflow: hidden;
+
+    border: 1px solid #292f36;
+    border-radius: 12px;
+
+    background: #0f1216;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.terminal-header {
+    display: flex;
+    gap: 7px;
+
+    padding: 13px 16px;
+
+    background: #15191e;
+    border-bottom: 1px solid #242930;
+}
+
+.terminal-header span {
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+    background: #4b535d;
+}
+
+.terminal-body {
+    padding: 25px;
+
+    font-family: "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.prompt {
+    color: #6ee7b7;
+}
+
+.response {
+    color: #8b949e;
+    margin-top: 10px;
+}
+
+.success {
+    color: #6ee7b7;
+}
+
+footer {
+    margin-top: 30px;
+
+    color: #555d67;
+
+    font-family: monospace;
+    font-size: 13px;
+}
+
+@media (max-width: 600px) {
+
+    .container {
+        padding: 40px 0;
+    }
+
+    h1 {
+        letter-spacing: -2px;
+    }
+
+    .stats {
+        flex-direction: column;
+    }
+
+    .stat {
+        width: 100%;
+    }
+
+    .description {
+        font-size: 16px;
+    }
 }
